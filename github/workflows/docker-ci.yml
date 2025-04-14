@@ -1,0 +1,36 @@
+name: CI - Compose Flask & React
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  docker-compose-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Compose
+        run: |
+          docker compose version
+
+      - name: Build and run services
+        run: |
+          docker compose up -d --build
+
+      - name: Check running containers
+        run: |
+          docker ps
+
+      - name: Health check backend
+        run: |
+          curl --fail http://localhost:5001 || exit 1
+
+      - name: Health check frontend
+        run: |
+          curl --fail http://localhost:80 || exit 1
+
+      - name: Done
+        run: echo "CI completed successfully 🎉"
