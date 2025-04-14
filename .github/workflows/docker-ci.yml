@@ -26,6 +26,7 @@ jobs:
 
       - name: Health check backend
         run: |
+          sleep 15
           curl --fail http://localhost:5001 || exit 1
 
       - name: Health check frontend
