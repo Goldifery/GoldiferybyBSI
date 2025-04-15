@@ -3,25 +3,55 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token
 from .models import User
 from . import db
+from app.utils.response import success_response, error_response
 
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
-    if User.query.filter_by(username=data['username']).first():
-        return jsonify({"msg": "User already exists"}), 400
-    hashed = generate_password_hash(data['password'])
-    new_user = User(username=data['username'], password=hashed)
+
+    name = data.get('name')
+    email = data.get('email')
+    phone = data.get('phone')
+    password = data.get('password')
+
+    if not name or not email or not phone or not password:
+        return error_response("Name, email, phone, and password are required", 400)
+
+    if User.query.filter_by(email=email).first():
+        return error_response("Email already registered", 409)
+
+    hashed_password = generate_password_hash(password)
+    new_user = User(name=name, email=email, phone=phone, password=hashed_password)
     db.session.add(new_user)
     db.session.commit()
-    return jsonify({"msg": "User created"}), 201
+
+    return success_response("User created", {"name": new_user.name, "email": new_user.email}, 201)
+
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    user = User.query.filter_by(username=data['username']).first()
-    if user and check_password_hash(user.password, data['password']):
+
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return error_response("Email and password are required", 400)
+
+    user = User.query.filter_by(email=email).first()
+    if user and check_password_hash(user.password, password):
         token = create_access_token(identity=user.id)
-        return jsonify(access_token=token)
-    return jsonify({"msg": "Invalid credentials"}), 401
+        return success_response("Login successful", {
+            "access_token": token,
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "phone": user.phone
+            }
+        })
+
+    return error_response("Invalid credentials", 401)
+
