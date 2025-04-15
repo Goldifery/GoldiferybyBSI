@@ -4,13 +4,13 @@ from flask_jwt_extended import create_access_token
 from .models import User
 from . import db
 from app.utils.response import success_response, error_response
+from app.utils.validators import is_valid_email, is_strong_password
 
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
-
     name = data.get('name')
     email = data.get('email')
     phone = data.get('phone')
@@ -18,6 +18,15 @@ def register():
 
     if not name or not email or not phone or not password:
         return error_response("Name, email, phone, and password are required", 400)
+
+    if not is_valid_email(email):
+        return error_response("Invalid email format", 400)
+
+    if not is_strong_password(password):
+        return error_response(
+            "Password must be at least 8 characters long, contain uppercase, lowercase, number, and symbol.",
+            400
+        )
 
     if User.query.filter_by(email=email).first():
         return error_response("Email already registered", 409)
@@ -27,7 +36,12 @@ def register():
     db.session.add(new_user)
     db.session.commit()
 
-    return success_response("User created", {"name": new_user.name, "email": new_user.email}, 201)
+    return success_response("User created", {
+        "name": new_user.name,
+        "email": new_user.email,
+        "phone": new_user.phone
+    }, 201)
+
 
 
 @auth_bp.route('/login', methods=['POST'])
